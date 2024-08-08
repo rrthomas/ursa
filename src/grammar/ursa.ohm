@@ -46,8 +46,8 @@ Ursa {
   If = if Exp Block
 
   Fn (a function) = FnType Block
-  FnType (a function type) = (fn | gen) "(" ListOf<Param, ","> ","? ")" TypeAnnotation?
-  Param = ident TypeAnnotation?
+  FnType (a function type) = (fn | gen) "(" ListOf<Param, ","> ","? ")" TypeAnnotation
+  Param = ident TypeAnnotation
 
   Loop = loop Block
 
@@ -130,7 +130,8 @@ Ursa {
   Block (a block) = "{" Sequence "}"
 
   // Types
-  NamedType = Path TypeArgs?
+  // TODO: NamedType = Path TypeArgs? : add namespace support
+  NamedType = ident TypeArgs?
   Type
     = NonemptyListOf<NamedType, "+"> -- intersection
     | FnType                         -- fn

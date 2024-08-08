@@ -4,18 +4,23 @@
 
 import assert from 'assert'
 
-import {ArkObject, globals} from './data.js'
+import {ArkObject, globals, globalTypes} from './data.js'
+import {ArkType} from './type.js'
 
 export class Location {
   constructor(public name: string, public isVar: boolean) {}
+}
+
+export class TypedLocation {
+  constructor(public name: string, public type: ArkType, public isVar: boolean) {}
 }
 
 export class Frame {
   constructor(
     // Locals are undefined between the point where they are allocated and
     // the point at which they are declared.
-    public locals: (Location | undefined)[],
-    public captures: Location[],
+    public locals: (TypedLocation | undefined)[],
+    public captures: TypedLocation[],
     public fnName?: string,
   ) {}
 }
@@ -24,13 +29,14 @@ export class Environment {
   constructor(
     public stack: [Frame, ...Frame[]] = [new Frame([], [])],
     public externalSyms: ArkObject = globals,
+    public externalTypes: Map<string, ArkType> = globalTypes,
   ) {}
 
   top() {
     return this.stack[0]
   }
 
-  push(items: (Location | undefined)[]) {
+  push(items: (TypedLocation | undefined)[]) {
     return new Environment(
       [
         new Frame(

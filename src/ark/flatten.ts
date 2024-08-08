@@ -13,6 +13,7 @@ import {
 } from './code.js'
 import {Location} from './compiler-utils.js'
 import {ArkBoolean, ArkNull, ArkVal} from './data.js'
+import {ArkType, ArkTypedId} from './type.js'
 
 export class ArkInst {
   private static nextId = 0
@@ -82,7 +83,8 @@ export class ArkIfBlockOpenInst extends ArkBlockOpenInst {
 export class ArkCallableBlockOpenInst extends ArkBlockOpenInst {
   constructor(
     sourceLoc: Interval | undefined,
-    public params: string[],
+    public params: ArkTypedId[],
+    public returnType: ArkType,
     public capturedVars: ArkNamedLoc[],
     public name?: string,
   ) {
@@ -349,7 +351,7 @@ export function expToInsts(
     return new ArkInsts([...insts.insts, new ArkReturnInst(exp.sourceLoc, insts.id, innerFn)])
   } else if (exp instanceof ArkFn) {
     const Constructor = exp instanceof ArkGenerator ? ArkGeneratorBlockOpenInst : ArkFnBlockOpenInst
-    const fnInst = new Constructor(exp.sourceLoc, exp.params, exp.capturedVars, sym)
+    const fnInst = new Constructor(exp.sourceLoc, exp.params, exp.type, exp.capturedVars, sym)
     const bodyInsts = expToInsts(exp.body, innerLoop, fnInst)
     bodyInsts.insts.push(new ArkReturnInst(exp.sourceLoc, bodyInsts.id, fnInst))
     return block(

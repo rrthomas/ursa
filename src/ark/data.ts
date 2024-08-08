@@ -9,6 +9,7 @@ import {
 import {FsMap} from './fsmap.js'
 import programVersion from '../version.js'
 import {debug} from './util.js'
+import {ArkType, ArkTypedId} from './type.js'
 
 // A hack that works for us, as browsers do not have util/types library, and
 // is-generator-function doesn't play nice with rollup.
@@ -17,7 +18,9 @@ function isGeneratorFunction(obj: object) {
   return constructor !== undefined && constructor.name === 'GeneratorFunction'
 }
 
-export class ArkVal {}
+export class ArkVal {
+  constructor(public type: ArkType) {}
+}
 
 export abstract class ArkAbstractObjectBase extends ArkVal {
   abstract getMethod(prop: string): ArkCallable | undefined
@@ -27,9 +30,9 @@ export abstract class ArkAbstractObjectBase extends ArkVal {
   abstract set(prop: string, val: ArkVal): ArkVal
 }
 
-export abstract class ArkCallable extends ArkVal {
+export class ArkCallable extends ArkVal {
   constructor(public params: string[]) {
-    super()
+    super(new ArkType([], new Map()))
   }
 }
 
@@ -190,7 +193,7 @@ class ConcreteInterned {
   }
 }
 
-export const ArkUndefined = new ArkVal()
+export const ArkUndefined = new ArkVal(new ArkType([], new Map()))
 export function ArkNull() {
   return ConcreteInterned.value<ArkNullVal, null>(ArkNullVal, null)
 }
@@ -206,13 +209,13 @@ export function ArkString(s: string) {
 
 export class ArkOperation extends ArkVal {
   constructor(public operation: Operation<ArkVal>) {
-    super()
+    super(new ArkType([], new Map())) // FIXME
   }
 }
 
 export abstract class ArkClosure extends ArkCallable {
-  constructor(params: string[], public captures: ArkRef[]) {
-    super(params)
+  constructor(params: ArkTypedId[], returnType: ArkType, public captures: ArkRef[]) {
+    super(params, returnType)
   }
 
   abstract call(locals: ArkValRef[]): Promise<ArkVal>
@@ -221,8 +224,8 @@ export abstract class ArkClosure extends ArkCallable {
 export abstract class ArkGeneratorClosure extends ArkClosure {}
 
 export class NativeOperation extends ArkCallable {
-  constructor(params: string[], public body: (...args: ArkVal[]) => Operation<ArkVal>) {
-    super(params)
+  constructor(params: ArkTypedId[], public body: (...args: ArkVal[]) => Operation<ArkVal>) {
+    super(params, new ArkType([], new Map())) // FIXME: correct return type
   }
 }
 
@@ -230,32 +233,15 @@ export class NativeOperation extends ArkCallable {
 export class NativeAsyncFn extends ArkCallable {
   public body: (...args: ArkVal[]) => Operation<ArkVal>
 
-  constructor(params: string[], innerBody: (...args: ArkVal[]) => Promise<ArkVal>) {
-    super(params)
+  constructor(
+    params: ArkTypedId[],
+    returnType: ArkType,
+    innerBody: (...args: ArkVal[]) => Promise<ArkVal>,
+  ) {
+    super(params, returnType)
     this.body = (...args: ArkVal[]) => call(() => innerBody(...args))
   }
 }
-
-// export class ArkType extends Ark {
-//   constructor(
-//   public superTraits: ArkType[],
-//   public members: Map<string, ArkFieldType | ArkMethodType>,
-//   ) {
-//   super()
-//   }
-// }
-
-// export class ArkFieldType extends Ark {
-//   constructor(public isVar: boolean, public type: ArkType) {
-//   super()
-//   }
-// }
-
-// export class ArkMethodType extends Ark {
-//   constructor(public params: [string, ArkType][], public returnType: ArkType) {
-//   super()
-//   }
-// }
 
 export class ArkObject extends ArkObjectBase {
   static properties: Map<string, ArkCallable> = new Map([...ArkObjectBase.methods])
@@ -494,6 +480,17 @@ for (const [k, v] of globals.properties.entries()) {
   jsGlobals.set(k, v)
 }
 
+export const globalTypes = new Map<string, ArkType>([
+  ['Null', ArkNull().type],
+  ['Boolean', ArkBoolean(true).type],
+  ['Number', ArkNumber(0).type],
+  ['String', ArkString('').type],
+
+  ['Object', globals.type],
+  ['List', new ArkList([]).type],
+  ['Map', new ArkMap(new Map()).type],
+])
+
 // FFI
 class ArkFromJsError extends Error {}
 
@@ -517,12 +514,14 @@ function fromJs(x: unknown, thisObj?: object, asMethod: boolean = false): ArkVal
     if (asMethod) {
       return new NativeAsyncFn(
         [],
+        new ArkType([], new Map()), // FIXME: 'any'
         async (_this, ...args) => fromJs(await fn(...args.map(toJs))),
       )
     }
     return new NativeAsyncFn(
       [],
-      async (...args) => fromJs(await fn(...args.map(toJs))),
+      new ArkType([], new Map()), // FIXME: 'any'
+      async (...args: ArkVal[]) => fromJs(await fn(...args.map(toJs))),
     )
   }
   if (x instanceof Array) {

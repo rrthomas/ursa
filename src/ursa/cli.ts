@@ -23,7 +23,7 @@ import {
 import {
   ArkExp, ArkLet, ArkListLiteral, ArkObjectLiteral, ArkSequence,
 } from '../ark/code.js'
-import {Environment, Location} from '../ark/compiler-utils.js'
+import {Environment, TypedLocation} from '../ark/compiler-utils.js'
 import {ArkState} from '../ark/interpreter.js'
 import {compile as arkCompile} from '../ark/reader.js'
 import {serializeVal} from '../ark/serialize.js'
@@ -33,6 +33,7 @@ import {
   arkToJs, evalArkJs, preludeJs, runtimeContext,
 } from '../ark/compiler/index.js'
 import {expToInst} from '../ark/flatten.js'
+import {ArkType} from '../ark/type.js'
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -201,7 +202,7 @@ function extractReturnValues(ark: ArkState, env: Environment, result: ArkVal | u
   const newVars = result.list[1] as ArkObject
   assert(newVars instanceof ArkObject)
   for (const [k, v] of newVars.properties.entries()) {
-    env = env.push([new Location(k, false)])
+    env = env.push([new TypedLocation(k, new ArkType([], new Map()), false)])
     ark.push([new ArkValRef(v)])
   }
   result = result.list[0]

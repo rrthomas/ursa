@@ -21,6 +21,7 @@
     "execa": "^9.3.0",
     "fs-extra": "^11.2.0",
     "get-source": "^2.0.12",
+    "keyalesce": "^2.0.0",
     "ohm-js": "^17.1.0",
     "rollup": "^4.19.0",
     "source-map": "^0.7.4",

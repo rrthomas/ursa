@@ -24,6 +24,7 @@ import {
 import {
   ArkCapture, ArkContinuation, ArkLocal, ArkNamedLoc,
 } from './code.js'
+import {ArkType, ArkTypedId} from './type.js'
 import {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   debug,
@@ -88,8 +89,8 @@ export class ArkRuntimeError extends Error {
 }
 
 class ArkFlatClosure extends ArkClosure {
-  constructor(params: string[], captures: ArkRef[], public body: ArkInst) {
-    super(params, captures)
+  constructor(params: ArkTypedId[], returnType: ArkType, captures: ArkRef[], public body: ArkInst) {
+    super(params, returnType, captures)
   }
 
   async call(locals: ArkValRef[]) {
@@ -267,7 +268,7 @@ function* doEvalFlat(outerArk: ArkState): Operation<ArkVal> {
       } else {
         throw new Error('invalid ArkCallableBlockOpenInst')
       }
-      const result = new Constructor(inst.params, captures, inst.next!)
+      const result = new Constructor(inst.params, inst.returnType, captures, inst.next!)
       mem.set(inst.matchingClose.id, result)
       inst = inst.matchingClose.next
     } else if (inst instanceof ArkLetBlockOpenInst) {
